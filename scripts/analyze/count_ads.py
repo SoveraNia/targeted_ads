@@ -355,7 +355,7 @@ def main():
             ads_from_profile += 1;
             
         except:
-          wtf = 1;
+          do_nothing = 1;
   
   outputAdDb();
   outputRedirectionDb()
