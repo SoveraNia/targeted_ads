@@ -4,6 +4,7 @@
     "identifier": "GLOBAL",
     "url_match": [
       "main_exit,url:",
+      "url=",
       "adurl=",
       "goto=",
       "sscs=",

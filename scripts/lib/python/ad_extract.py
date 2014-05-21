@@ -48,20 +48,44 @@ class AdExtractor:
     f = open(self.ad_providers_filename);
     self.ad_providers = json.load(f);
     f.close();
+    
+    f = open(self.category_mapping_alexa_filename);
+    self.category_mapping_alexa = json.load(f);
+    f.close();
+    f = open(self.category_mapping_yahoo_filename);
+    self.category_mapping_yahoo = json.load(f);
+    f.close();
+    f = open(self.category_mapping_alchemy_filename);
+    self.category_mapping_alchemy = json.load(f);
+    f.close();
+    
     self.stats = Stats('Ad Extracting Statistics');
   
   def isAdProvider(self, url):
     host = url.split('?')[0];
     for i in range(len(self.ad_providers)):
-      if self.ad_providers[i] in host:
-        return True;
+      try: # In case of encode error
+        if self.ad_providers[i] in host:
+          return True;
+      except:
+        continue;
     return False;
+  
+  def getAdProviders(self, url):
+    ret = [];
+    for i in range(len(self.ad_providers)):
+      try: # In case of encode error
+        if self.ad_providers[i] in url and not self.ad_providers[i] in ret:
+          ret.append(self.ad_providers[i]);
+      except:
+        continue;
+    return ret;
   
   def getLandingUrl(self, url):
     if self.isAdProvider(url):
-      return self.detectRedirection(url);
+      return self.detectRedirection(url).lower();
     else:
-      return url;
+      return url.lower();
     
   def getLandingDomain(self, url):
     return url2Domain(self.getLandingUrl(url));
@@ -90,10 +114,19 @@ class AdExtractor:
           return results[i][2];
     return "NONE";
   
-  def outputRedirectionDb():
+  def outputRedirectionDb(self):
     f = open(self.redirection_db_filename, 'w');
     f.write(json.dumps(self.redirection_db));
     f.close();
+    
+  def outputAdDb(self):
+    f = open(self.ad_db_filename, 'w');
+    f.write(json.dumps(self.ad_db));
+    f.close();
+    
+  def updateDb(self):
+    self.outputRedirectionDb();
+    self.outputAdDb();
   
   def getPageCategory(self, url):
     result = self.getPageRawCategory(url);
@@ -107,9 +140,10 @@ class AdExtractor:
         if type(result['category']) == list:
           for i in range(len(result['category'])):
             path = result['category'][i]['AbsolutePath'];
-            if 'World' in path or 'Region' in path:
-              continue;
             refined_path = '/'.join(path.split('/')[:3]);
+            # Ignore region-based categories
+            if 'World' in refined_path or 'Region' in refined_path:
+              continue;
             if not refined_path in ret['category']:
               ret['category'].append(refined_path);
         elif type(result['category']) == dict:
@@ -200,8 +234,21 @@ class AdExtractor:
       html = response.read();
       ret = json.loads(html)['Response']['UrlInfoResult']['Alexa']['Related']['Categories']['CategoryData'];
       # Check whether it's a single Top/World category
-      if type(ret) == dict and ('Top/World' in ret['AbsolutePath'] or 'Top/Regional' in ret['AbsolutePath']):
-        return {};
+      if type(ret) == dict:
+        path = ret['AbsolutePath'];
+        refined_path = '/'.join(path.split('/')[:3]);
+        if 'World' in refined_path or 'Region' in refined_path:
+          return {};
+      if type(ret) == list:
+        empty = True;
+        for i in range(len(ret)):
+          path = ret[i]['AbsolutePath'];
+          refined_path = '/'.join(path.split('/')[:3]);
+          # Ignore region-based categories
+          if not 'World' in refined_path and not 'Region' in refined_path:
+            empty = False;
+        if empty:
+          return {};
       return {'source':'Alexa', 'category':ret};
     except:
       return {}
@@ -248,19 +295,41 @@ class AdExtractor:
       ret = {};
       ret['source'] = 'Alchemy';
       ret['category'] = json.loads(html)['category'];
-      return ret;
+      if ret['category'] == 'unknown':
+        return {};
+      else:
+        return ret;
     except:
       return {};
     
   def mapCategory(self, source, category):
+    ret = []
     for i in range(len(category)):
+      cat = category[i];
       if source == 'Alexa':
-        do_nothing = 0;
+        while not cat in self.category_mapping_alexa and '/' in cat:
+          cat = '/'.join(cat.split('/')[:-1]);
+        if cat in self.category_mapping_alexa:
+          for j in range(len(self.category_mapping_alexa[cat])):
+            if not self.category_mapping_alexa[cat][j] in ret:
+              ret.append(self.category_mapping_alexa[cat][j])
+        else:
+          print "MAPPING FAILED\tAlexa\t",cat
       elif source == 'Yahoo':
-        do_nothing = 0;
+        if cat in self.category_mapping_yahoo:
+          for j in range(len(self.category_mapping_yahoo[cat])):
+            if not self.category_mapping_yahoo[cat][j] in ret:
+              ret.append(self.category_mapping_yahoo[cat][j])
+        else:
+          print "MAPPING FAILED\tYahoo\t",cat
       elif source == 'Alchemy':
-        do_nothing = 0;
-    return [];
+        if cat in self.category_mapping_alchemy:
+          for j in range(len(self.category_mapping_alchemy[cat])):
+            if not self.category_mapping_alchemy[cat][j] in ret:
+              ret.append(self.category_mapping_alchemy[cat][j])
+        else:
+          print "MAPPING FAILED\tAlchemy\t",cat
+    return ret;
       
   def __test__(self):
     print self.getPageCategory("http://www.microsoft.com");
