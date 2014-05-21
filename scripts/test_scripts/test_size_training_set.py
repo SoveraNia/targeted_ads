@@ -246,7 +246,7 @@ def printResult(key):
     print domain.encode('utf-8') + '\t' + str(ads[key]['remarketing'][domain]);
 
 def main():
-  # testEmptyProfile();
+  testEmptyProfile();
   for i in range(len(profile_sizes)):
     print "===== Testing on Profile "+str(i)+" with size "+str(profile_sizes[i])+" =====";
     url_list = generateDataset(profile_sizes[i]);
