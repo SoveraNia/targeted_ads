@@ -94,7 +94,7 @@ def getGoogleAdPref(cookies_file):
 
 def identifyAd(input, profile_name, url_list = []):
   if not profile_name in ads:
-    ads[profile_name] = {'original':{},'mapped':{},'remarketing':{},'domains':{}};
+    ads[profile_name] = {'original':{},'mapped':{},'remarketing':{},'domains':{},'un-categorized':{}};
   line = input.split('\t');
   if line[0] == '<AD>' and len(line) >= 3:
     stats.increment("Ads detected", 1);
@@ -152,6 +152,11 @@ def identifyAd(input, profile_name, url_list = []):
             ads[profile_name]['mapped'][cat] += 1;
           else:
             ads[profile_name]['mapped'][cat] = 1;
+      else:
+        if landing_domain in ads[profile_name]['un-categorized']:
+          ads[profile_name]['un-categorized'][landing_domain] += 1;
+        else:
+          ads[profile_name]['un-categorized'][landing_domain] = 1;
     else:
       stats.increment("Ad missed", 1);
     try: # Encode errors
@@ -164,7 +169,7 @@ def testEmptyProfile():
   if len(publisher_urls) % num_pages_per_fresh_profile != 0:
     num_profiles += 1
   print "===== Testing on Empty Profile 1 ====="
-  ads['EMPTY_PROFILE_1'] = {'original':{},'mapped':{},'remarketing':{},'domains':{}};
+  ads['EMPTY_PROFILE_1'] = {'original':{},'mapped':{},'remarketing':{},'domains':{},'un-categorized':{}};
   for i in range(num_profiles):
     pages_to_load = ';'.join(publisher_urls[num_pages_per_fresh_profile * i:num_pages_per_fresh_profile * (i + 1)])
     result = loadPublisherPage(pages_to_load, 'NONE');
@@ -174,7 +179,7 @@ def testEmptyProfile():
   printResult('EMPTY_PROFILE_1');
   return;
   print "===== Testing on Empty Profile 2 ====="
-  ads['EMPTY_PROFILE_2'] = {'original':{},'mapped':{},'remarketing':{},'domains':{}};
+  ads['EMPTY_PROFILE_2'] = {'original':{},'mapped':{},'remarketing':{},'domains':{},'un-categorized':{}};
   for i in range(num_profiles):
     pages_to_load = ';'.join(publisher_urls[num_pages_per_fresh_profile * i:num_pages_per_fresh_profile * (i + 1)])
     result = loadPublisherPage(pages_to_load, 'NONE');
@@ -187,7 +192,7 @@ def processOneProfile(url_list, name):
   print "----- Training Set for Profile " + name + " -----";
   for j in range(len(url_list)):
     print url_list[j].encode('utf-8');
-  ads[name] = {'original':{},'mapped':{},'remarketing':{},'domains':{}};
+  ads[name] = {'original':{},'mapped':{},'remarketing':{},'domains':{},'un-categorized':{}};
   num_profiles = len(publisher_urls) / num_pages_per_fresh_profile;
   if len(publisher_urls) % num_pages_per_fresh_profile != 0:
     num_profiles += 1
@@ -236,6 +241,9 @@ def printResult(key):
   print "===== Mapped Result for Profile " + key + " ====="
   for cat in sorted(ads[key]['mapped']):
     print cat + '\t' + str(ads[key]['mapped'][cat]);
+  print "===== Un-categorized Domains for Profile " + key + " ====="
+  for dom in sorted(ads[key]['un-categorized']):
+    print dom.encode('utf-8') + '\t' + str(ads[key]['un-categorized'][dot]);
   print "===== Domain Result for Profile " + key + " ====="
   for dom in sorted(ads[key]['domains']):
     print dom.encode('utf-8') + '\t' + str(ads[key]['domains'][dom]);

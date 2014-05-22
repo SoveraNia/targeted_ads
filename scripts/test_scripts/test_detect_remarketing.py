@@ -270,7 +270,7 @@ def oneParse():
       count_profile = 0;
       if redirect_domain in ads_profile:
         count_profile = ads_profile[redirect_domain];
-      if count_profile - count_empty >= 3 and not non_remarketing_pages[i] in pages_to_be_moved:
+      if count_profile - count_empty >= 1 and not non_remarketing_pages[i] in pages_to_be_moved:
         pages_to_be_moved.append(non_remarketing_pages[i]);
       
   # Move pages

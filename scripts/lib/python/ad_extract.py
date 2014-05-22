@@ -116,12 +116,12 @@ class AdExtractor:
   
   def outputRedirectionDb(self):
     f = open(self.redirection_db_filename, 'w');
-    f.write(json.dumps(self.redirection_db));
+    f.write(json.dumps(self.redirection_db).replace('], "', '],\n"'));
     f.close();
     
   def outputAdDb(self):
     f = open(self.ad_db_filename, 'w');
-    f.write(json.dumps(self.ad_db));
+    f.write(json.dumps(self.ad_db).replace('], "', '],\n"'));
     f.close();
     
   def updateDb(self):
@@ -213,18 +213,19 @@ class AdExtractor:
       if ret != {}:
         self.ad_db[homepage] = ret;
         return ret;
-    # Alchemy
-    ret = self.queryAlchemy(url);
-    self.stats.increment('Alchemy queried', 1);
-    if ret != {}:
-      self.ad_db[url] = ret;
-      return ret;
-    ret = self.queryAlchemy(url);
-    self.stats.increment('Alchemy queried', 1);
-    if ret != {}:
-      self.ad_db[homepage] = ret;
-      return ret;
     return ret;
+    # Alchemy
+    #ret = self.queryAlchemy(url);
+    #self.stats.increment('Alchemy queried', 1);
+    #if ret != {}:
+    #  self.ad_db[url] = ret;
+    #  return ret;
+    #ret = self.queryAlchemy(url);
+    #self.stats.increment('Alchemy queried', 1);
+    #if ret != {}:
+    #  self.ad_db[homepage] = ret;
+    #  return ret;
+    #return ret;
     
   def queryAlexa(self, url):
     php_url = "http://localhost/ad_detect/get_url_category.php";
