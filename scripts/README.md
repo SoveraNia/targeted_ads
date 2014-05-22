@@ -1,8 +1,7 @@
 Instructions to Run Test Scripts
 ============
-1. Requirements
+1. Environment Setup
 ------------
-
 First you will need a PhantomJS 1.9 with Flash plugin support. It can be downloaded here:
 
 http://www.ryanbridges.org/2013/05/21/putting-the-flash-back-in-phantomjs/
@@ -27,3 +26,24 @@ sudo apt-get --no-install-recommends -y install openssl chrpath libssl-dev libfo
 sudo apt-get -y install x11-xkb-utils
 sudo apt-get -y install xfonts-base xfonts-100dpi xfonts-75dpi xfonts-scalable xfonts-cyrillic
 ```
+
+After everything is installed, you can use the following command to start Xvfb display:
+
+```
+Xvfb :99 -screen 0 1280x1024x24 &
+export DISPLAY=:99
+```
+
+Finally, you will need Apache Httpd server, PHP and its curl support.
+
+```
+sudo apt-get -y install apache2
+sudo apt-get -y install php5
+sudo apt-get -y install php5-curl
+sudo apt-get -y install libapache2-mod-php5
+```
+
+2. Setting up scripts
+------------
+First, you need to host some Javascript and PHP files on your Apache server. To do this, first create folder "ad_detect" under your Apache server's HTML directory (e.g. "/var/www/html"). 
+Then copy "resources" folder, "lib/js" folder and "bin/get_url_category.php" to the "ad_detect" folder you just created.
