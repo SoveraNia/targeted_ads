@@ -1,1 +1,0 @@
-var script = document.createElement("script");script.type = "text/javascript";script.src = "http://localhost/ad_detect/lib/scraper.js";document.body.appendChild(script);
