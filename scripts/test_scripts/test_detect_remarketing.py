@@ -52,7 +52,6 @@ build_script = "~/Lab_TargetedAds/src/bin/build_profile.py";
 exec_script = "~/Lab_TargetedAds/src/bin/run_experiment.py";
 num_o_page_loads = 5; # Number of page loads to build a profile
 num_o_remarketing_ads = 5; # Number of remarketing ads we need to see
-num_pages_per_fresh_profile = 20;
 
 ads_empty = {}; # Set of ads detected using an empty profile
 remarketing_pages = [];
@@ -68,14 +67,13 @@ def buildProfile(url, profile):
   return results;
 
 def loadPublisherPage(url, profile):
-  temp = url.split(';');
   command = 'python ' + exec_script + ' "' + url + '" 1 ' + profile;
   if options != None and options != '':
     command += ' identify_ads=1,' + options;
   else:
     command += ' identify_ads=1';
   p = subprocess.Popen(command, shell = True, stdout = subprocess.PIPE);
-  stats.increment('Num of page loads', len(temp));
+  stats.increment('Num of page loads', 1);
   results = p.communicate()[0];
   return results;
 
@@ -87,12 +85,8 @@ def removeProfile(temp_cookie_file):
 
 # Load publisher pages using an empty profile, record ads detected
 def testEmptyProfile():
-  num_of_profiles = len(publisher_urls) / num_pages_per_fresh_profile;
-  if len(publisher_urls) % num_pages_per_fresh_profile != 0:
-    num_of_profiles += 1
-  for i in range(num_of_profiles):
-    pages_to_load = publisher_urls[10 * i:10 * i + 10];
-    result = loadPublisherPage(';'.join(pages_to_load), 'NONE');
+  for i in range(len(publisher_urls)):
+    result = loadPublisherPage(publisher_urls[i], 'NONE');
     result = result.split('\n');
     for j in range(len(result)):
       line = result[j].split('\t');
@@ -101,9 +95,9 @@ def testEmptyProfile():
         landing_url = 'NONE';
         # If the scraper failed, detect redirection
         if line[1] != 'NONE':
-          landing_url = adExtractor.getLandingUrl(line[1]).lower();
+          landing_url = adExtractor.getLandingUrl(line[1]);
         else:
-          landing_url = adExtractor.getLandingUrl(line[2]).lower();
+          landing_url = adExtractor.getLandingUrl(line[2]);
         print landing_url;
         if landing_url != 'NONE':
           stats.increment("Landing url extracted", 1);
@@ -124,15 +118,12 @@ def processOneUrl(url):
   bottom_line = 0;
   if domain in ads_empty:
     bottom_line = ads_empty[domain];
-  bottom_line += 10; # 5 more ads than using an empty profile
+  bottom_line += 5; # 5 more ads than using an empty profile
   count = 0;
-  num_of_profiles = len(publisher_urls) / num_pages_per_fresh_profile;
-  if len(publisher_urls) % num_pages_per_fresh_profile != 0:
-    num_of_profiles += 1
   # Build all profiles
   urls_for_profile = [url];
   urls_for_profile += getInternalPages(url, 4);
-  for i in range(num_of_profiles):
+  for i in range(len(publisher_urls)):
     cur_profile = url.replace('/','').replace(':','') + '_' + str(i) + '.tmp.profile';
     for j in range(len(urls_for_profile)):    
       result = buildProfile(urls_for_profile[j], cur_profile);
@@ -147,12 +138,13 @@ def processOneUrl(url):
               rm_profile = url.replace('/','').replace(':','') + '_' + str(k) + '.tmp.profile';
               removeProfile(rm_profile);
             return;
+  non_remarketing_pages.append(url);
+  return;
   
   # Second pass, build profle for next load and load pages
-  for i in range(num_of_profiles):
+  for i in range(len(publisher_urls)):
     cur_profile = url.replace('/','').replace(':','') + '_' + str(i) + '.tmp.profile';    
-    pages_to_load = publisher_urls[10 * i:10 * i + 10];
-    result = loadPublisherPage(';'.join(pages_to_load), cur_profile);
+    result = loadPublisherPage(publisher_urls[i], cur_profile);
     result = result.split('\n');
     for j in range(len(result)):
       line = result[j].split('\t');
@@ -174,7 +166,7 @@ def processOneUrl(url):
           if count >= bottom_line:
             remarketing_pages.append(url);
             # Remove remaining profiles
-            for k in range(i, num_of_profiles):
+            for k in range(i, len(publisher_urls)):
               rm_profile = url.replace('/','').replace(':','') + '_' + str(k) + '.tmp.profile';
               removeProfile(rm_profile);
             return;
@@ -185,7 +177,7 @@ def processOneUrl(url):
 
 def test_1():
   print "===== Testing on Empty Profile ====="
-  testEmptyProfile();
+  # testEmptyProfile();
   # print ads_empty;
   for i in range(len(training_urls)):
     print "===== Testing on " + training_urls[i] + " ====="
@@ -201,31 +193,28 @@ def test_1():
 # TEST_2 iterative
 #######################################
 
-def oneParse():  
+def oneParse():
+  pages_per_profile = 10;
+  
+  profile = "temp_profile.tmp.profile";
+  
   pages_to_be_moved = [];
   
-  num_of_profiles = len(publisher_urls) / num_pages_per_fresh_profile;
-  if len(publisher_urls) % num_pages_per_fresh_profile != 0:
-    num_of_profiles += 1
-  # Build all profiles
-  for i in range(num_of_profiles):
-    cur_profile = 'profile_' + str(i) + '.tmp.profile';
-    for j in range(len(non_remarketing_pages)):    
-      result = buildProfile(non_remarketing_pages[j], cur_profile);
-      result = result.split('\n');
-      # Eliminate pages during profile generation
-      for k in range(len(result)):
-        line = result[k].split('\t');
-        if line[0] == '<MSG><RESULT>' and len(line) >= 2:
-          if line[1] == 'Remarketing script detected' and not non_remarketing_pages[j] in pages_to_be_moved:
-            pages_to_be_moved.append(non_remarketing_pages[j]);
+  # Build a large profile
+  for i in range(len(non_remarketing_pages)):
+    result = buildProfile(non_remarketing_pages[i], profile);
+    result = result.split('\n');
+    # Eliminate pages during profile generation
+    for j in range(len(result)):
+      line = result[j].split('\t');
+      if line[0] == '<MSG><RESULT>' and len(line) >= 2:
+        if line[1] == 'Remarketing script detected':
+          pages_to_be_moved.append(non_remarketing_pages[i]);
   
   # Load publisher pages
   ads_profile = {};
-  for i in range(num_of_profiles):
-    cur_profile = 'profile_' + str(i) + '.tmp.profile';
-    pages_to_load = publisher_urls[i*num_pages_per_fresh_profile:(i+1)*num_pages_per_fresh_profile]
-    result = loadPublisherPage(';'.join(pages_to_load), cur_profile);
+  for i in range(len(publisher_urls)):
+    result = loadPublisherPage(publisher_urls[i], profile);
     result = result.split('\n');
     for j in range(len(result)):
       line = result[j].split('\t');
@@ -234,10 +223,10 @@ def oneParse():
         landing_url = 'NONE';
         # If the scraper failed, detect redirection
         if line[1] != 'NONE':
-          landing_url = adExtractor.getLandingUrl(line[1]).lower();
+          landing_url = adExtractor.getLandingUrl(line[1]);
         else:
-          landing_url = adExtractor.getLandingUrl(line[2]).lower();
-        print landing_url.encode('utf-8');
+          landing_url = adExtractor.getLandingUrl(line[2]);
+        print landing_url;
         if landing_url != 'NONE':
           stats.increment("Landing url extracted", 1);
           landing_domain = url2Domain(landing_url);
@@ -260,18 +249,6 @@ def oneParse():
       count_profile = ads_profile[domain];
     if count_profile - count_empty >= 5 and not non_remarketing_pages[i] in pages_to_be_moved:
       pages_to_be_moved.append(non_remarketing_pages[i]);
-    # In case there's redirection
-    redirect_url = adExtractor.detectRedirection(non_remarketing_pages[i]).lower();
-    if redirect_url != non_remarketing_pages[i]:
-      redirect_domain = url2Domain(redirect_url);
-      count_empty = 0;
-      if redirect_domain in ads_empty:
-        count_empty = ads_empty[redirect_domain];
-      count_profile = 0;
-      if redirect_domain in ads_profile:
-        count_profile = ads_profile[redirect_domain];
-      if count_profile - count_empty >= 3 and not non_remarketing_pages[i] in pages_to_be_moved:
-        pages_to_be_moved.append(non_remarketing_pages[i]);
       
   # Move pages
   for i in range(len(pages_to_be_moved)):
@@ -279,12 +256,10 @@ def oneParse():
     try:
       non_remarketing_pages.remove(pages_to_be_moved[i]);
     except:
-      do_nothing = 1;
+      do_nothing;
   
   # Remove profile
-  for i in range(num_of_profiles):
-    cur_profile = 'profile_' + str(i) + '.tmp.profile';
-    removeProfile(cur_profile);
+  removeProfile(profile);
   return;
 
 def test_2():
@@ -296,13 +271,10 @@ def test_2():
   prev_count = 0;
   max_num_iteration = 5;
   for i in range(max_num_iteration):
-    print '===== Round ' + str(i) + ' =====';
     prev_count = len(non_remarketing_pages);
     oneParse();
     cur_count = len(non_remarketing_pages);
-    print 'Number of Remarketing Pages Detected: ' + str(len(remarketing_pages));
-    for j in range(len(remarketing_pages)):
-      print remarketing_pages[j];
+    print '===== Number of Remarketing Pages Detected: ' + str(len(remarketing_pages)) + ' =====';
     if cur_count == prev_count:
       break;
   print '===== Remarketing Pages ====='
@@ -314,7 +286,7 @@ def test_2():
   return;
 
 def main():
-  test_2();
+  test_1();
   adExtractor.stats.output();
   stats.output();
 

@@ -12,7 +12,7 @@ def checkArguments():
     print ""
     print "Load web pages using PhantomJS to build profile and store the resulting cookies in COOKIES_FILE."
     print "[OPTIONS] is used to pass configuration parameters to PhantomJS"
-    print "URLS_TO_PRELOAD can be passed as a file name as well as a list of urls separated by ';'"
+    print "If an url is parsed as URLS_TO_PRELOAD parameter, it will load the url 5 times to generate the profile."
     sys.exit(0);
 
 phantomjs_bin = "~/Lab_TargetedAds/phantomjs/phantomjs--linux-x86_64/bin/phantomjs";
@@ -69,7 +69,7 @@ def main():
     urls_to_preload = f.readlines();
     f.close();
   if '://' in input_file:
-    urls_to_preload = input_file.split(';');
+    urls_to_preload = [input_file];
     
   cookie_file = sys.argv[2];
   # clearCookies(cookie_file);

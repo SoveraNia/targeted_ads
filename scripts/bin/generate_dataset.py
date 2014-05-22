@@ -15,7 +15,7 @@ def checkArguments():
 
 getCategoryListingPhp = "~/Lab_TargetedAds/src/bin/get_category_listing.php";
 getCategoriesPhp = "~/Lab_TargetedAds/src/bin/get_categories.php";
-minListings = 250;
+minListings = 1000;
 
 def getCategoryListing(category, start, count):
   success = False;
