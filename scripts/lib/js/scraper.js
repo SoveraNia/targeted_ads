@@ -259,7 +259,7 @@ function getDocumentAdSrc(doc, level, result_obj_list, incomplete_iframes) {
         for (var j = 0; j < temp.length; j++) {
           key = temp[j].substr(0, temp[j].indexOf('='));
           value = temp[j].substr(temp[j].indexOf('=') + 1, temp[j].length);
-          if (key.toUpperCase() == 'CLICKTAG' || key.toUpperCase() == 'CLICKURL' || key.toUpperCase() == 'CLICK')
+          if (key.toUpperCase() == 'CLICKTAG' || key.toUpperCase() == 'CLICKURL' || key.toUpperCase() == 'ARMCLICKURL' || key.toUpperCase() == 'CLICK')
             click_url = decodeURIComponent(value);
         }
         if (click_url == "")
@@ -277,6 +277,26 @@ function getDocumentAdSrc(doc, level, result_obj_list, incomplete_iframes) {
         getDocumentAdSrc(iframes[i].contentDocument, level + 1, result_obj_list, incomplete_iframes);
       } else {
         incomplete_iframes.push(iframes[i]);
+      }
+    }
+  }
+  // Text ads
+  var a_elements = doc.querySelectorAll('a');
+  var seen_text_ads = {};
+  for (var i = 0; i < a_elements.length; i++) {
+    var sub_imgs = a_elements[i].getElementsByTagName('img');
+    if (sub_imgs.length > 0) {
+      continue;
+    }
+    var url = a_elements[i].getAttribute('href');
+    var text = a_elements[i].innerHTML;
+    if (url && isUrlAd(url)) {
+      var ele_url = getElementURL(a_elements[i]);
+      if (ele_url)
+        ele_url = relativeToAbsoluteURL(ele_url);
+      if (!(ele_url in seen_text_ads)) {
+        seen_text_ads[ele_url] = true;
+        result_obj_list.push({"url": ele_url, "element": a_elements[i], "text-ad": true, "ad_urls": [ele_url]});
       }
     }
   }
@@ -708,11 +728,15 @@ function __main__() {
     // console.log("<MSG><RESULT>\tObject Detected:\t" + array2JSON(__result_obj_list));
     // console.log("<MSG><RESULT>\tAd Detected:\t" + array2JSON(__result_ad_list));
     for (var i = 0; i < __result_obj_list.length; i++) {
+      var msg = "";
       if (__result_obj_list[i]['landing_url']) {
-        console.log("<MSG><RESULT>\tAd Detected:\t" + __result_obj_list[i]['landing_url'] + '\t' + __result_obj_list[i]['url']);
+        msg = "<MSG><RESULT>\tAd Detected:\t" + __result_obj_list[i]['landing_url'] + '\t' + __result_obj_list[i]['url'];
       } else {
-        console.log("<MSG><RESULT>\tAd Detected:\tNONE\t" + __result_obj_list[i]['url']);
+        msg = "<MSG><RESULT>\tAd Detected:\tNONE\t" + __result_obj_list[i]['url'];
       }
+      if (__result_obj_list[i]['text-ad'])
+        msg += '\tTEXT_AD'
+      console.log(msg);
     }
     console.log("__quit__scraper.js");
   }
