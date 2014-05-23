@@ -243,7 +243,7 @@ def printResult(key):
     print cat + '\t' + str(ads[key]['mapped'][cat]);
   print "===== Un-categorized Domains for Profile " + key + " ====="
   for dom in sorted(ads[key]['un-categorized']):
-    print dom.encode('utf-8') + '\t' + str(ads[key]['un-categorized'][dot]);
+    print dom.encode('utf-8') + '\t' + str(ads[key]['un-categorized'][dom]);
   print "===== Domain Result for Profile " + key + " ====="
   for dom in sorted(ads[key]['domains']):
     print dom.encode('utf-8') + '\t' + str(ads[key]['domains'][dom]);
