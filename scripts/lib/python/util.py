@@ -50,7 +50,7 @@ def url2Domain(url):
       domain = temp[len(temp) - 3] + '.' + temp[len(temp) - 2] + '.' + temp[len(temp) - 1];
     else:
       domain = temp[len(temp) - 2] + '.' + temp[len(temp) - 1];
-  return domain
+  return domain.lower();
 
 def url2Homepage(url):
   if '://' in url:

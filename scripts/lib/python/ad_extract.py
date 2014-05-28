@@ -38,6 +38,9 @@ class AdExtractor:
   category_mapping_alchemy_filename = expanduser('~') + '/Lab_TargetedAds/src/resources/category_mapping_alchemy.json'
   category_mapping_alchemy = {};
   
+  category_mapping_bluecoat_filename = expanduser('~') + '/Lab_TargetedAds/src/resources/category_mapping_bluecoat.json'
+  category_mapping_bluecoat = {};
+  
   def __init__(self):
     f = open(self.ad_db_filename);
     self.ad_db = json.load(f);
@@ -57,6 +60,9 @@ class AdExtractor:
     f.close();
     f = open(self.category_mapping_alchemy_filename);
     self.category_mapping_alchemy = json.load(f);
+    f.close();
+    f = open(self.category_mapping_bluecoat_filename);
+    self.category_mapping_bluecoat = json.load(f);
     f.close();
     
     self.stats = Stats('Ad Extracting Statistics');
@@ -83,7 +89,11 @@ class AdExtractor:
   
   def getLandingUrl(self, url):
     if self.isAdProvider(url):
-      return self.detectRedirection(url).lower();
+      result = self.detectRedirection(url);
+      if result != "NONE":
+        return result.lower();
+      else:
+        return "NONE"
     else:
       return url.lower();
     
@@ -116,12 +126,12 @@ class AdExtractor:
   
   def outputRedirectionDb(self):
     f = open(self.redirection_db_filename, 'w');
-    f.write(json.dumps(self.redirection_db).replace('], "', '],\n"'));
+    f.write(json.dumps(self.redirection_db).replace('", "', '",\n"'));
     f.close();
     
   def outputAdDb(self):
     f = open(self.ad_db_filename, 'w');
-    f.write(json.dumps(self.ad_db).replace('], "', '],\n"'));
+    f.write(json.dumps(self.ad_db).replace('}, "http', '},\n"http'));
     f.close();
     
   def updateDb(self):
@@ -164,9 +174,21 @@ class AdExtractor:
       except:
         self.stats.increment('Category detection failed', 1);
         print 'ERROR PARSING:',result;
+    # Alchemy
     elif result['source'] == 'Alchemy':
       ret['source'] = 'Alchemy';
       ret['category'] = [result['category']];
+    # Bluecoat
+    elif result['source'] == 'Bluecoat':
+      ret['source'] = 'Bluecoat';
+      try:
+        for i in range(len(result['category'])):
+          cat = result['category'][i];
+          if not cat in ret['category']:
+            ret['category'].append(cat);
+      except:
+        self.stats.increment('Category detection failed', 1);
+        print 'ERROR PARSING:',result;
     else:
       ret = {};
     if ret != {} and ret['source'] != '':
@@ -212,6 +234,13 @@ class AdExtractor:
       ret = self.queryYahoo(homepage);
       if ret != {}:
         self.ad_db[homepage] = ret;
+        return ret;
+    # Bluecoat
+    for i in range(2):
+      self.stats.increment('Bluecoat queried', 1);
+      ret = self.queryBluecoat(url);
+      if ret != {}:
+        self.ad_db[url] = ret;
         return ret;
     return ret;
     # Alchemy
@@ -285,7 +314,7 @@ class AdExtractor:
       return {};
   
   def queryAlchemy(self, url):
-    alchemy_api_key = "beeb8469c6f7d1a0c7344dcee236d3e8ca71d53c";
+    alchemy_api_key = $ALCHEMY_API_KEY$;
     alchemy_api_url = "http://access.alchemyapi.com/calls/url/URLGetCategory";
     call_url = alchemy_api_url + "?apikey=" + alchemy_api_key;
     call_url += "&url=" + urllib2.quote(url);
@@ -302,6 +331,26 @@ class AdExtractor:
         return ret;
     except:
       return {};
+    
+  def queryBluecoat(self, url):
+    phantomjs_bin = "~/Lab_TargetedAds/phantomjs/phantomjs--linux-x86_64/bin/phantomjs";
+    phantomjs_script = "~/Lab_TargetedAds/src/bin/bluecoat_category.js";
+    command = phantomjs_bin + ' ' + phantomjs_script + ' "' + url + '"';
+    results = runCommand(command);
+    ret = {}
+    try:
+      ret['source'] = 'Bluecoat'
+      ret['category'] = []
+      for i in range(len(results)):
+        temp = results[i].split('\t');
+        if len(temp) >= 2 and temp[0] == '<CATEGORY>':
+          ret['category'].append(temp[1]);
+      if len(ret['category']) > 0:
+        return ret;
+      else:
+        return {};
+    except:
+      return {}
     
   def mapCategory(self, source, category):
     ret = []
@@ -330,6 +379,13 @@ class AdExtractor:
               ret.append(self.category_mapping_alchemy[cat][j])
         else:
           print "MAPPING FAILED\tAlchemy\t",cat
+      elif source == 'Bluecoat':
+        if cat in self.category_mapping_bluecoat:
+          for j in range(len(self.category_mapping_bluecoat[cat])):
+            if not self.category_mapping_bluecoat[cat][j] in ret:
+              ret.append(self.category_mapping_bluecoat[cat][j])
+        else:
+          print "MAPPING FAILED\tBluecoat\t",cat
     return ret;
       
   def __test__(self):

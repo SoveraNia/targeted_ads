@@ -545,8 +545,6 @@ function extractLandingPageFromUrlAlt(url) {
  */
 function getLandingPageCategory(url) {
   // AWIS
-  // var accessKeyId = "AKIAJE4Z7LOVBPZWDP5A";
-  // var secretAccessKey = "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";
   var phpCallUrl = "http://localhost/ad_detect/get_url_category.php";
   var callUrl = phpCallUrl + '?site=' + encodeURIComponent(url);
   // callUrl += '&accessKeyId=' + encodeURIComponent(accessKeyId) + '&secretAccessKey=' + encodeURIComponent(secretAccessKey);
@@ -560,26 +558,7 @@ function getLandingPageCategory(url) {
     // console.log(result);
     return result['Response']['UrlInfoResult']['Alexa']['Related']['Categories']['CategoryData'];
   } catch (e) {
-    // Alchemy as backup plan
-    var alchemy_api_key = "beeb8469c6f7d1a0c7344dcee236d3e8ca71d53c";
-    var alchemy_api_url = "http://access.alchemyapi.com/calls/url/URLGetCategory";
-    var call_url = alchemy_api_url + "?apikey=" + alchemy_api_key;
-    call_url += "&url=" + encodeURIComponent(url);
-    call_url += "&outputMode=json"
-    
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', call_url, false);
-    xhr.send(null);
-    try {
-      var result = JSON.parse(xhr.responseText);
-      if (result.status == "OK") {
-        return { source: "Alchemy", category: result.category };
-      } else {
-        return {};
-      }
-    } catch (e) {
-      return {};
-    }
+    return {};
   } 
 }
 

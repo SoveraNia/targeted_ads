@@ -114,9 +114,8 @@ def identifyAd(input, profile_name, url_list = []):
     else:
       landing_url = adExtractor.getLandingUrl(line[2]);
     if landing_url != 'NONE':
-      landing_url = landing_url.lower();
       stats.increment("Landing url extracted", 1);
-      landing_domain = url2Domain(landing_url).lower();
+      landing_domain = url2Domain(landing_url);
       ad_url = line[2];
       # Record domains
       if landing_domain in ads[profile_name]['domains']:
@@ -125,7 +124,7 @@ def identifyAd(input, profile_name, url_list = []):
         ads[profile_name]['domains'][landing_domain] = 1;
       # Record remarketing ads
       for k in range(len(url_list)):
-        if landing_domain == url2Domain(url_list[k]).lower():
+        if landing_domain == url2Domain(url_list[k]):
           if landing_domain in ads[profile_name]['remarketing']:
             ads[profile_name]['remarketing'][landing_domain] += 1;
           else:
