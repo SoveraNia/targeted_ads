@@ -113,8 +113,8 @@ class CategoryListing {
 
 }
 
-$accessKeyId = 'AKIAJE4Z7LOVBPZWDP5A';//htmlspecialchars($_GET["accessKeyId"]);
-$secretAccessKey = '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';//htmlspecialchars($_GET["secretAccessKey"]);
+$accessKeyId = $ACCESS_KEY$;//htmlspecialchars($_GET["accessKeyId"]);
+$secretAccessKey = $SECRET_ACCESS_KEY$;//htmlspecialchars($_GET["secretAccessKey"]);
 
 $path = $argv[1];
 $start = $argv[2];

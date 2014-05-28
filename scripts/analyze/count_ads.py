@@ -104,7 +104,7 @@ def getPageCategory(url):
   php_url = "http://localhost/ad_detect/get_url_category.php";
   php_url += '?site=' + urllib2.quote(url);
   
-  alchemy_api_key = "beeb8469c6f7d1a0c7344dcee236d3e8ca71d53c";
+  alchemy_api_key = $ALCHEMY_API_KEY$;
   alchemy_api_url = "http://access.alchemyapi.com/calls/url/URLGetCategory";
   call_url = alchemy_api_url + "?apikey=" + alchemy_api_key;
   call_url += "&url=" + urllib2.quote(url);
@@ -355,7 +355,7 @@ def main():
             ads_from_profile += 1;
             
         except:
-          do_nothing = 1;
+          wtf = 1;
   
   outputAdDb();
   outputRedirectionDb()
