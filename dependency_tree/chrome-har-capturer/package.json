@@ -1,0 +1,39 @@
+{
+  "name": "chrome-har-capturer",
+  "author": {
+    "name": "Andrea Cardaci",
+    "email": "cyrus.and@gmail.com"
+  },
+  "description": "Capture HAR files from a remote Chrome instance",
+  "keywords": [
+    "chrome",
+    "har",
+    "remote",
+    "debug"
+  ],
+  "homepage": "https://github.com/cyrus-and/chrome-har-capturer",
+  "version": "0.3.3",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/cyrus-and/chrome-har-capturer.git"
+  },
+  "bugs": {
+    "url": "http://github.com/cyrus-and/chrome-har-capturer/issues"
+  },
+  "bin": {
+    "chrome-har-capturer": "./bin/chrome-har-capturer.js"
+  },
+  "dependencies": {
+    "chrome-remote-interface": "0.x.x",
+    "optimist": "0.3.x",
+    "colors": "0.6.x"
+  },
+  "readme": "chrome-har-capturer\n===================\n\nCapture HAR files from a remote Chrome instance.\n\nUsage\n-----\n\nStart Chrome with options:\n\n- `--remote-debugging-port=<port>` to enable the [Remote Debugging Protocol][3]\n  on the port `<port>`;\n\n- `--enable-benchmarking --enable-net-benchmarking` to enable the Javascript\n  interface that allows `chrome-har-capturer` to flush the DNS cache and the\n  socket pool before loading each URL.\n\nFor example:\n\n    google-chrome --remote-debugging-port=9222 --enable-benchmarking --enable-net-benchmarking\n\n### Use the bundled utility\n\n    Usage: chrome-har-capturer [options] URL...\n\n    Options:\n      --host, -h      Remote Debugging Protocol host                  [default: \"localhost\"]\n      --port, -p      Remote Debugging Protocol port                  [default: 9222]\n      --output, -o    Dump to file instead of stdout\n      --verbose, -v   Enable verbose output on stderr                 [boolean]\n      --messages, -m  Dump raw messages instead of the generated HAR  [boolean]\n\nThis module comes with a utility that can be used to generate a cumulative HAR\nfile from a list of URLs.\n\nInstall globally with:\n\n    sudo npm install -g chrome-har-capturer\n\nLoad a list of URL with:\n\n    chrome-har-capturer -o out.har \\\n        https://github.com \\\n        http://reddit.com \\\n        http://www.reddit.com/help/faq\n\n### Write a custom application\n\nInstall locally with:\n\n    npm install chrome-har-capturer\n\nThe following snippet loads an array of URLs serially and generate a cumulative\nHAR file, just like the Record button in the [Network Panel of Chrome Developer\nTools][4].\n\n```javascript\nvar fs = require('fs');\nvar chc = require('chrome-har-capturer');\nvar c = chc.load(['https://github.com',\n                  'http://reddit.com',\n                  'http://www.reddit.com/help/faq']);\nc.on('connect', function() {\n    console.log('Connected to Chrome');\n});\nc.on('end', function(har) {\n    fs.writeFileSync('out.har', JSON.stringify(har));\n});\nc.on('error', function() {\n    console.error('Unable to connect to Chrome');\n});\n```\n\nAPI\n---\n\n### load(urls, [options])\n\nConnects to a remote instance of Google Chrome using the [Remote Debugging\nProtocol][3] and loads a list of URLs serially. Returns an instance of the\n`Client` class.\n\n`urls` is either an array or a single URL.\n\n`options` is an object with the following optional properties:\n\n- `host`: [Remote Debugging Protocol][3] host. Defaults to `localhost`.\n- `port`: [Remote Debugging Protocol][3] port. Defaults to `9222`.\n- `chooseTab`: Callback used to determine which remote tab attach to. Takes the\n  JSON array returned by `http://host:port/json` containing the tab list and\n  must return the numeric index of a tab. Defaults to a function that returns\n  the active one (`function (tabs) { return 0; }`).\n\n### setVerbose([verbose])\n\nEnable or disable verbose prints for debugging purposes.\n\n`verbose`: Verbosity flag. Defaults to `true`.\n\n### Class: Client\n\n#### Event: 'connect'\n\n    function () {}\n\nEmitted when a connection to Chrome has been established.\n\n#### Event: 'pageStart'\n\n    function (url) {}\n\nEmitted when Chrome is about to load `url`.\n\n#### Event: 'pageEnd'\n\n    function (url) {}\n\nEmitted when Chrome has finished loading `url`.\n\n#### Event: 'pageError'\n\n    function (url) {}\n\nEmitted when Chrome has failed loading `url`. Failed URLs will not appear in the\ncumulative HAR object.\n\n#### Event: 'end'\n\n    function (har, messages) {}\n\nEmitted when every given URL has been loaded. `har` is the cumulative HAR object\nand `messages` is the array of raw messages received through the [Remote\nDebugging Protocol][3].\n\n#### Event: 'error'\n\n    function () {}\n\nEmitted when `http://host:port/json` can't be reached or if there are unexpected\nbehaviors with Chrome.\n\nResources\n---------\n\n- [HAR 1.2 Spec][1]\n- [HAR Viewer][2]\n- [Chrome Developer Tools: Remote Debugging Protocol v1.0][3]\n\n[1]: http://www.softwareishard.com/blog/har-12-spec/\n[2]: http://www.softwareishard.com/blog/har-viewer/\n[3]: https://developers.google.com/chrome-developer-tools/docs/protocol/1.0/\n[4]: https://developers.google.com/chrome-developer-tools/docs/network\n",
+  "readmeFilename": "README.md",
+  "_id": "chrome-har-capturer@0.3.3",
+  "dist": {
+    "shasum": "1c66bb2a42c63c8519c7e53487df716a3562ccbb"
+  },
+  "_from": "chrome-har-capturer@",
+  "_resolved": "https://registry.npmjs.org/chrome-har-capturer/-/chrome-har-capturer-0.3.3.tgz"
+}
