@@ -222,7 +222,7 @@ function getDocumentAdSrc(doc, level, result_obj_list, incomplete_iframes) {
     if (nodes[i].tagName == 'IMG') {
       var href = nodes[i].parentNode.href;
       if (href && isUrlAd(href) && isElementAd(nodes[i])) {
-        result_obj_list.push({"url": href, /*"element": nodes[i].parentNode,*/ "ad_urls": [href]})
+        result_obj_list.push({"url": href, "element": nodes[i].parentNode, "ad_urls": [href]})
       }
     } else if (nodes[i].tagName = 'EMBED') {
       var flashvars = nodes[i].getAttribute('flashvars');
@@ -328,8 +328,16 @@ function isUrlAd(url, element) {
   if (!url)
     return false;
   
+  real_url = relativeToAbsoluteURL(url);
+  host = parseUri(real_url).host
+  
   for (var j = 0; j < ad_providers.length; j++) {
-    if (url.indexOf(ad_providers[j]) >= 0) {
+    var index
+    if (ad_providers[j].indexOf('/') > 0)
+      index = url.indexOf(ad_providers[j]);
+    else
+      index = host.indexOf(ad_providers[j]);
+    if (index > 0 && (url.charAt(index - 1) == '.' || url.charAt(index - 1) == '/')) {
       return true;
     }
   }
@@ -545,6 +553,8 @@ function extractLandingPageFromUrlAlt(url) {
  */
 function getLandingPageCategory(url) {
   // AWIS
+  // var accessKeyId = "AKIAJE4Z7LOVBPZWDP5A";
+  // var secretAccessKey = "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";
   var phpCallUrl = "http://localhost/ad_detect/get_url_category.php";
   var callUrl = phpCallUrl + '?site=' + encodeURIComponent(url);
   // callUrl += '&accessKeyId=' + encodeURIComponent(accessKeyId) + '&secretAccessKey=' + encodeURIComponent(secretAccessKey);
@@ -558,7 +568,26 @@ function getLandingPageCategory(url) {
     // console.log(result);
     return result['Response']['UrlInfoResult']['Alexa']['Related']['Categories']['CategoryData'];
   } catch (e) {
-    return {};
+    // Alchemy as backup plan
+    var alchemy_api_key = "beeb8469c6f7d1a0c7344dcee236d3e8ca71d53c";
+    var alchemy_api_url = "http://access.alchemyapi.com/calls/url/URLGetCategory";
+    var call_url = alchemy_api_url + "?apikey=" + alchemy_api_key;
+    call_url += "&url=" + encodeURIComponent(url);
+    call_url += "&outputMode=json"
+    
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', call_url, false);
+    xhr.send(null);
+    try {
+      var result = JSON.parse(xhr.responseText);
+      if (result.status == "OK") {
+        return { source: "Alchemy", category: result.category };
+      } else {
+        return {};
+      }
+    } catch (e) {
+      return {};
+    }
   } 
 }
 
