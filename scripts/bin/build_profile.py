@@ -1,5 +1,6 @@
 #!/bin/python
 
+import os;
 import sys;
 import json;
 import signal;
@@ -17,6 +18,8 @@ def checkArguments():
 
 phantomjs_bin = "~/Lab_TargetedAds/phantomjs/phantomjs--linux-x86_64/bin/phantomjs";
 phantomjs_script = "~/Lab_TargetedAds/src/bin/phantomjs_start.js";
+
+phantomjs_proc = None;
 
 class TimeoutFunctionException(Exception): 
   """Exception to raise on a timeout""" 
@@ -40,20 +43,40 @@ class TimeoutFunction:
     signal.alarm(0)
     return result 
 
-def abortPhantomJS():
-  command = "killall phantomjs";
-  p = subprocess.Popen(command, shell = True);
-  p.wait();
-
 def startPhantomJS(url, cookie_file, options):
-  command = phantomjs_bin + " --load-plugins=true --disk-cache=no --web-security=no --cookies-file=" + cookie_file;
+  command = "exec " + phantomjs_bin + " --load-plugins=true --disk-cache=no --web-security=no --cookies-file=" + cookie_file;
+  # command = "--load-plugins=true --disk-cache=no --web-security=no --cookies-file=" + cookie_file;
   command += " " + phantomjs_script + " '" + url + "'";
   if options != None:
     command += " " + options;
-  p = subprocess.Popen(command, shell = True, stdout = subprocess.PIPE);
-  results = p.communicate()[0];
+  global phantomjs_proc;
+  phantomjs_proc = subprocess.Popen(command, shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE);
+  results, log = phantomjs_proc.communicate();
+  log = log.split('\n');
+  for i in range(len(log)):
+    if "phantomjs: cannot connect to X server :" in log[i]:
+      port = int(log[i].split("phantomjs: cannot connect to X server :")[1]);
+      sys.stderr.write("Xvfb crashed. Restarting on port " + str(port) + '\n'); 
+      restartXvfb(port);
+      phantomjs_proc = None;
+      return startPhantomJS(url, cookie_file, options);
+  phantomjs_proc = None;
   return results;
 
+def abortPhantomJS():
+  #command = "killall phantomjs";
+  #p = subprocess.Popen(command, shell = True);
+  #p.wait();
+  global phantomjs_proc;
+  if phantomjs_proc != None:
+    phantomjs_proc.terminate();
+  phantomjs_proc = None;
+
+def restartXvfb(port):
+  command = "Xvfb :" + str(port) + " -screen 0 1280x1024x24 &";
+  p = subprocess.Popen(command, shell = True);
+  time.sleep(3);
+  
 def clearCookies(cookie_file):
   command = "echo '' > " + cookie_file;
   p = subprocess.Popen(command, shell = True);
@@ -89,11 +112,23 @@ def main():
       sys.stderr.write('Load Finished:\t' + urls_to_preload[i] + '\n');
       output += ret;
     except:
-      sys.stderr.write('Timesout');
+      sys.stderr.write('Timesout\n');
       abortPhantomJS();
   
   sys.stderr.write("Cookies saved in: " + cookie_file + '\n');
   print output;
   
+def test():
+  loadPage = TimeoutFunction(startPhantomJS, 2);
+  try:
+    sys.stderr.write('Loading:\t' + "http://www.sina.com.cn/" + '\n');
+    ret = loadPage("http://www.sina.com.cn/", "NONE", "");
+    sys.stderr.write('Load Finished:\t' + "http://www.sina.com.cn/" + '\n');
+    output += ret;
+  except:
+    sys.stderr.write('Timesout\n');
+    abortPhantomJS();
+  
 if __name__ == "__main__":
   main();
+  # test();
