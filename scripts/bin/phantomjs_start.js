@@ -1,25 +1,38 @@
 var page = require('webpage').create(), fs = require('fs'), address;
-
 var system = require('system');
 
 if (system.args.length < 2) {
   console.log('Usage:');
-  console.log('phantomjs --load-plugins=true --disk-cache=no --web-security=no --cookies-file=COOKIE_FILE phantomjs_start.js URL OPTIONS [BLOCKED_DOMAIN_1 [BLOCKED_DOMAIN_2 ...]]')
+  console.log('phantomjs --load-plugins=true --disk-cache=no --web-security=no --cookies-file=COOKIE_FILE phantomjs_start.js URL OPTIONS')
+  console.log('')
+  console.log("Available options:")
+  console.log("\tdnt=1\t\t\t\tEnable Do-not-track HTTP header")
+  console.log("\tidentify_ads=1\t\t\tEnable advertisement extraction")
+  console.log("\tlog_requests=\tall\t\tLog all HTTP requests.")
+  console.log("\t\t\ttrackers\tLog only trackers based on Ghostery database.")
+  console.log("\tdelay=MS\t\t\tSet the elapsed time before scripts are being injected on the page. Default is 1000.")
+  console.log("\tblock=DOM_1+DOM_2+...\t\tBlock all HTTP requests that go through designated domains.")
+  console.log("\tcookie_block=DOM_1+DOM_2+...\tBlock all designated domains from setting cookies. (Testing)")
+  console.log("\tcookie_allow=DOM_1+DOM_2+...\tAllow only designated domains to set cookies. (Testing))")
   phantom.exit(1);
 } else {
   address = system.args[1];
 }
 
+page.settings.webSecurityEnabled = false;
+
 var identifyAds = false;
 var dnt = false;
 var identifyTrackers = false;
 var log_requests = false;
-blocked_domains = [];
+var blocked_domains = [];
+var cookie_blocked_domains = [];
+var cookie_allowed_domains = [];
 
 var options = {
-  scriptInjectWaitTime : 0,
+  scriptInjectWaitTime : 5000,
   scriptExecTimeout : 10000,
-  totalTimeout : 45000
+  totalTimeout : 60000
 }
 
 if (system.args.length >= 3) {
@@ -29,8 +42,8 @@ if (system.args.length >= 3) {
 }
 // Read input options
 for (var i = 0; i < input_options.length; i++) {
-  key = input_options[i].toUpperCase();
-  value = null;
+  var key = input_options[i].toUpperCase();
+  var value = null;
   if (input_options[i].indexOf('=') >= 0) {
     temp = input_options[i].split('=');
     key = temp[0].toUpperCase();
@@ -59,10 +72,24 @@ for (var i = 0; i < input_options.length; i++) {
     options.scriptInjectWaitTime = parseInt(value);
   }
   else if (key == "BLOCK") {
-    b_domains = value.split('+');
+    var b_domains = value.split('+');
     for (var j = 0; j < b_domains.length; j++) {
       console.log("<PHANTOMJS><DEBUG>\tBlocking domain: " + b_domains[j]);
       blocked_domains.push(b_domains[j]);
+    }
+  }
+  else if (key == "COOKIE_BLOCK") {
+    var cb_domains = value.split('+');
+    for (var j = 0; j < cb_domains.length; j++) {
+      console.log("<PHANTOMJS><DEBUG>\tCookie-blocking domain: " + cb_domains[j]);
+      cookie_blocked_domains.push(cb_domains[j]);
+    }
+  }
+  else if (key == "COOKIE_ALLOW") {
+    var ca_domains = value.split('+');
+    for (var j = 0; j < ca_domains.length; j++) {
+      console.log("<PHANTOMJS><DEBUG>\tCookie-allowing domain: " + ca_domains[j]);
+      cookie_allowed_domains.push(ca_domains[j]);
     }
   }
 }
@@ -108,8 +135,13 @@ function isTracker(url) {
   return tracker_id;
 }
 
-if (dnt || blocked_domains.length > 0 || identifyTrackers || log_requests) {
-  page.onResourceRequested = function(requestData, request) {
+page.customHeaders = {
+  'x-project-homepage': 'http://ad-measurement.cs.ucr.edu/'
+};
+
+page.onResourceRequested = function(requestData, request) {
+  // console.log("Request\t" + JSON.stringify(requestData))
+  if (dnt || blocked_domains.length > 0 || identifyTrackers || log_requests) {
     var blocked = false;
     for (var i = 0; i < blocked_domains.length; i++) {
       if (requestData['url'].split('&')[0].toUpperCase().indexOf(blocked_domains[i]) >= 0) {
@@ -133,8 +165,47 @@ if (dnt || blocked_domains.length > 0 || identifyTrackers || log_requests) {
         console.log("<MSG><RESULT>\tRequest Detected:\t" + requestData['url']);
       }
     }
-  };
+  }
 }
+
+function filterCookies() {
+  // console.log(JSON.stringify(phantom.cookies));
+  //var new_cookies = [];
+  var to_be_removed = []
+  for (var i = 0; i < phantom.cookies.length; i++) {
+    dom = phantom.cookies[i].domain.toLowerCase();
+    // Blocking mode
+    if (cookie_blocked_domains.length > 0) {
+      for (var j = 0; j < cookie_blocked_domains.length; j++) {
+        if (cookie_blocked_domains[j].toLowerCase() == dom || dom.indexOf('.' + cookie_blocked_domains[j].toLowerCase()) >= 0) {
+          to_be_removed.push(phantom.cookies[i].name);
+          break;
+        } else {
+          //new_cookies.push(phantom.cookies[i]);
+        }
+      }
+    }
+    // Allowing mode
+    else if (cookie_allowed_domains.length > 0) {
+      match = false;
+      for (var j = 0; j < cookie_allowed_domains.length; j++) {
+        if (cookie_allowed_domains[j].toLowerCase() == dom || dom.indexOf('.' + cookie_allowed_domains[j].toLowerCase()) >= 0) {
+          match = true;
+          //new_cookies.push(phantom.cookies[i]);
+          break;
+        }
+      }
+      if (!match)
+        to_be_removed.push(phantom.cookies[i].name);
+    }
+  }
+  for (var i = 0; i < to_be_removed.length; i++) {
+    console.log("Deleting\t" + to_be_removed[i]);
+    phantom.deleteCookie(to_be_removed[i])
+  }
+  // console.log(JSON.stringify(phantom.cookies));
+}
+filterCookies();
 
 var time = Date.now();
 
@@ -151,6 +222,8 @@ page.onConsoleMessage = function(msg) {
         if ((out_current_time - out_last_time) > 1000) {
           t = out_current_time - time;
           console.log('<PHANTOMJS>\tTask terminated! ' + t + ' ms.\t' + address);
+          page.close();
+          filterCookies();
           phantom.exit();
           window.clearInterval(outer);
         }
@@ -167,6 +240,8 @@ page.onConsoleMessage = function(msg) {
         if ((out_current_time - out_last_time) > 1000) {
           t = out_current_time - time;
           console.log('<PHANTOMJS>\tTask terminated! ' + t + ' ms.\t' + address);
+          page.close();
+          filterCookies();
           phantom.exit();
           window.clearInterval(outer);
         }
@@ -212,6 +287,8 @@ if (identifyAds) {
         t = out_current_time - time;
         console.log('<PHANTOMJS>\tTask terminated! ' + t + ' ms.\t' + address);
         window.clearInterval(outer);
+        page.close();
+        filterCookies();
         phantom.exit();
       }
     }, 200);
@@ -245,6 +322,8 @@ if (identifyAds) {
         t = out_current_time - time;
         console.log('<PHANTOMJS>\tTask terminated! ' + t + ' ms.\t' + address);
         window.clearInterval(outer);
+        page.close();
+        filterCookies();
         phantom.exit();
       }
     }, 200);
